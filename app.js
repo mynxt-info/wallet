@@ -71,8 +71,9 @@ $(document).ready(function () {
                     encrypted_wallet = data.encrypted_wallet;
 
                     var password_div = '<form role="form" action="#" class="form-horizontal"><div class="form-group"><label for="tx_master_password" class="col-sm-4 control-label">Master Password</label><div class="col-sm-7"><input type="password" class="form-control" id="tx_master_password" name="tx_master_password" placeholder="Enter your master password" autocomplete="off"><p class="help-block"><small>This operation requires you to enter your master password so we can decrypt your wallet in your browser. Your master password is never sent to our servers!</small></p></div></div></form>';
-                    var message_html = "<p class='message'>The destination account <strong>" + tx_to + "</strong> has a balance of <strong>" + recipient_balance + " NXT</strong>." +
-                        " Please confirm that you want to send <strong>" + nm_amount + " NXT.</p>";
+                    var message_html = "<div class='message alert alert-success'>The destination account <strong>" + tx_to + "</strong> has a balance of <strong>" + recipient_balance + " NXT</strong>." +
+                        " Please confirm that you want to send <strong>" + nm_amount + " NXT.</div>";
+
 
                     var footer_message_html = '<div class="col-xs-8 loading"></div>' +
                         '<div class="col-xs-4" id="footer_message_button">' +
