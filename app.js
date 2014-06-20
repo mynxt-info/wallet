@@ -1,7 +1,7 @@
 var requestRunning = false;
 
 $(document).ready(function () {
-    var step = 1, public_key, secretPhrase, tx_to, nm_amount, nm_fee, master_salt, encrypted_wallet, master_password;
+    var step = 1, public_key, secretPhrase, tx_to, nm_amount, nm_fee, master_salt, encrypted_wallet, master_password, adr = new NxtAddress();
 
     /**
      * Refresh Balance
@@ -53,9 +53,12 @@ $(document).ready(function () {
             requestRunning = true;
             $(".loading").html('Please wait <img src="./../img/ajax-loader.gif">').show();
 
+
+            adr.set(tx_to);
+
             var data = {
                 "getEncryptedWallet": 1,
-                "tx_to": tx_to,
+                "tx_to": adr.account_id(),
                 "nm_amount": nm_amount,
                 "nm_fee": nm_fee
             };
@@ -108,10 +111,11 @@ $(document).ready(function () {
 
             public_key = nxtCrypto.getPublicKey(secretPhrase);
 
+            adr.set(tx_to);
 
             data = {
                 "getTransactionBytes": 1,
-                "tx_to": tx_to,
+                "tx_to": adr.account_id(),
                 "nm_amount": nm_amount,
                 "nm_fee": nm_fee,
                 "public_key": public_key
@@ -139,8 +143,10 @@ $(document).ready(function () {
                 if (typeof data.unsignedTransactionBytes !== "undefined") {
                     var unsignedTransactionBytes = data.unsignedTransactionBytes, transactionBytes;
 
+                    adr.set(tx_to);
+
                     // confirm the server returned valid bytes
-                    if(!confirmRecipient(unsignedTransactionBytes, tx_to)) {
+                    if(!confirmRecipient(unsignedTransactionBytes, adr.account_id())) {
                         return $('#body_message').html("Our server got compromised. Your funds are still here. Please contact us at info@mynxt.info").show();
                     }
 
