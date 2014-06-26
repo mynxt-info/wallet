@@ -66,3 +66,26 @@ function generateWallet(master_password) {
 function confirmRecipient(unsignedTransactionBytes, recipient) {
     return nxtCrypto.byteArrayToBigInteger(converters.hexStringToByteArray(unsignedTransactionBytes.substr(80,16))).toString() == recipient;
 }
+
+function generateBackup(secret_phrase, master_salt, master_password) {
+    var wallet, encrypted_wallet, data, key;
+    wallet = {
+        "user_id": "1",
+        "version": "0.1",
+        "accounts": [
+            {
+                "id": nxtCrypto.getAccountId(secret_phrase),
+                "password": secret_phrase
+            }
+        ]
+    };
+
+    key = asmCrypto.PBKDF2_HMAC_SHA256.hex(master_password, master_salt, 1499, 32);
+    key = pack("H*", key);
+
+    encrypted_wallet = mcrypt.Encrypt(JSON.stringify(wallet), null, key, "rijndael-128", 'ecb');
+
+    data = master_salt + strtr(base64.encode(encrypted_wallet), '+/=', '-_,');
+
+    return data;
+}
