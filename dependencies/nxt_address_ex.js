@@ -386,4 +386,55 @@ function NxtAddress()
 
 		return false;
 	}
+
+
+    this.format_guess = function(s, org) {
+        var d = '',
+            list = [];
+
+        s = s.toUpperCase();
+        org = org.toUpperCase();
+
+        for (var i = 0; i < s.length;) {
+            var m = 0;
+
+            for (var j = 1; j < s.length; j++) {
+                var pos = org.indexOf(s.substr(i, j));
+
+                if (pos != -1) {
+                    if (Math.abs(pos - i) < 3) m = j;
+                } else break;
+            }
+
+            if (m) {
+                list[list.length] = {
+                    's': i,
+                    'e': i + m
+                };
+                i += m;
+            } else i++;
+        }
+
+        if (list.length == 0) return s;
+
+        for (var i = 0, j = 0; i < s.length; i++) {
+            if (i >= list[j].e) {
+                var start;
+
+                while (j < list.length - 1) {
+                    start = list[j++].s;
+
+                    if (i < list[j].e || list[j].s >= start) break;
+                }
+            }
+
+            if (i >= list[j].s && i < list[j].e) {
+                d += s.charAt(i);
+            } else {
+                d += '<b style="color:red">' + s.charAt(i) + '</b>';
+            }
+        }
+
+        return d;
+    }
 }
