@@ -50,11 +50,23 @@ $(document).ready(function () {
                 return;
             }
 
+            if(!adr.set(tx_to)){
+
+                if(tx_to.indexOf('NXT-') == 0) var prependNxt = true;
+
+                if(adr.guess.length === 1) {
+                    var guess = prependNxt ? "NXT-" + adr.guess[0] : adr.guess[0];
+                    $("#send-error").html('The recipient address is malformed, did you mean: ' +
+                        '<span class="guess-address" style="font-weight: bold; cursor: pointer;" data-address="' + guess +'">' + adr.format_guess(guess, tx_to) + '?</span>').show();
+                } else {
+                    $("#send-error").html('The recipient address is malformed. Please double check').show();
+                }
+
+                return;
+            }
+
             requestRunning = true;
             $(".loading").html('<img src="./img/ajax-loader.gif">').show();
-
-
-            adr.set(tx_to);
 
             var data = {
                 "getEncryptedWallet": 1,
@@ -309,6 +321,12 @@ $(document).ready(function () {
 
     $("#sndModal").on('click', '.send-nxt', function () {
         send_nxt();
+    });
+
+    $("#sndModal").on('click', '.guess-address', function () {
+        $("#tx_to").val($(this).data('address'));
+
+        $("#send-error").hide();
     });
 
     $('#sndModal').on('show.bs.modal', function (e) {
