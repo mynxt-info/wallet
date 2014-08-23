@@ -136,7 +136,7 @@ var MyNXT = (function (MyNXT, $) {
 
     MyNXT.decryptedWallet = wallet;
     MyNXT.salt = salt;
-    MyNXT.mainAccount = accountId;k
+    MyNXT.mainAccount = accountId;
 
     return MyNXT.encryptWallet(masterPassword);
   };
