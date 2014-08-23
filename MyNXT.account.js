@@ -170,12 +170,16 @@ var MyNXT = (function (MyNXT, $) {
         label = modal.find('#ownSecretPhrase .account-label').val();
       }
 
-      MyNXT.accounts.push({ tx_account_id: accountId, tx_label: label });
+      var secretPhraseHex = converters.stringToHexString(secretPhrase);
+      var publicKey = nxtCrypto.getPublicKey(secretPhraseHex);
+
+      MyNXT.accounts.push({ tx_account_id: accountId, tx_label: label, tx_public_key: publicKey });
 
       MyNXT.updateAccountList();
 
       var data = {
         accountId: accountId,
+        publicKey: publicKey,
         label: label
       };
 

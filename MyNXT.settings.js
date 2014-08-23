@@ -51,6 +51,10 @@ $(document).ready(function () {
         if (account.bl_selected == 1) {
           MyNXT.mainAccount = account.tx_account_id;
         }
+
+        if(account.tx_public_key == "") {
+          $("#noPublicKeys").show()
+        }
       }
     });
   }

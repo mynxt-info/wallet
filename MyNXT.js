@@ -42,7 +42,6 @@ var MyNXT = (function (MyNXT, $) {
   var accountList = $("#accountList");
 
   MyNXT.updateAccountList = function () {
-
     var accounts = MyNXT.accounts;
     MyNXT.showSmallLoadingBar(accountList);
 
@@ -135,34 +134,58 @@ var MyNXT = (function (MyNXT, $) {
   MyNXT.setMainAccount = function (account) {
     MyNXT.mainAccount = account.tx_account_id;
 
-    if (MyNXT.getTransactionHistory) MyNXT.getTransactionHistory();
+    $.get('nxt?requestType=getAccount', { account: MyNXT.mainAccount }, function (result) {
+      var newAccount = true;
 
-    var adr = new NxtAddress();
-    adr.set(account.tx_account_id);
+      if(typeof result.publicKey !== 'undefined') newAccount = false;
 
-    if (account.firstAccount) {
-      var labelClass = 'success';
-    } else {
-      var labelClass = 'default';
-    }
+      if (MyNXT.getTransactionHistory) MyNXT.getTransactionHistory();
 
-    var label = '<span class="label label-' + labelClass + ' edit-label" ' +
-      'data-name="tx_label" data-type="text" data-pk="' + account.id_account + '" data-url="api/0.1/user/account" data-title="Enter label"' +
-      'style="margin-left: 10px; padding-bottom: .2em;">' +
-      account.tx_label +
-      '</span>';
-    var div = $("#own_account_rs");
-    div.text(adr.toString(true));
-    div.append(label);
+      var publicKeyDiv = $("#publicKey");
+      var publicKeyWrapper = $("#publicKeyDiv");
+      var noPublicKeyDiv = $("#noPublicKey");
+      publicKeyWrapper.hide();
+      noPublicKeyDiv.hide();
+      publicKeyDiv.empty();
 
-    $("#own_account_id").text(adr.account_id());
-
-    div.find('.edit-label').editable({
-      emptytext: '- No label -',
-      defaultValue: '',
-      success: function (response) {
-        if (response.status == 'error') return response.message;
+      if(newAccount) {
+        if(account.tx_public_key != "") {
+          $("#publicKey").html(account.tx_public_key);
+        } else {
+          noPublicKeyDiv.show();
+        }
+        publicKeyWrapper.show();
       }
+
+
+      var adr = new NxtAddress();
+      adr.set(account.tx_account_id);
+
+      if (account.firstAccount) {
+        var labelClass = 'success';
+      } else {
+        var labelClass = 'default';
+      }
+
+      var label = '<span class="label label-' + labelClass + ' edit-label" ' +
+        'data-name="tx_label" data-type="text" data-pk="' + account.id_account + '" data-url="api/0.1/user/account" data-title="Enter label"' +
+        'style="margin-left: 10px; padding-bottom: .2em;">' +
+        account.tx_label +
+        '</span>';
+      var div = $("#own_account_rs");
+      div.text(adr.toString(true));
+      var labelDiv = $("#accountLabel");
+      labelDiv.html(label);
+
+      $("#own_account_id").text(adr.account_id());
+
+      labelDiv.find('.edit-label').editable({
+        emptytext: '- No label -',
+        defaultValue: '',
+        success: function (response) {
+          if (response.status == 'error') return response.message;
+        }
+      });
     });
   };
 
@@ -206,7 +229,7 @@ var MyNXT = (function (MyNXT, $) {
     for (var i = 0; i < wallet.accounts.length; i++) {
       var account = wallet.accounts[i];
 
-      if (account.password == "") return;
+      if (account.password == "") callback(false);
     }
 
     $.post('api/0.1/user/wallet', { wallet: MyNXT.encryptedWallet, salt: MyNXT.salt }, function (result) {
@@ -218,7 +241,6 @@ var MyNXT = (function (MyNXT, $) {
 }(MyNXT || {}, jQuery));
 
 $(document).ready(function () {
-
   $("#save").click(function () {
     $("#frmSettings").submit();
   });
@@ -228,6 +250,14 @@ $(document).ready(function () {
   } catch (e) {
 
   }
+
+  $("#own_account_rs, #publicKey").on('click', function () {
+    $(this).selectText();
+  });
+
+  $('.popover_show').popover({
+    trigger: 'click'
+  });
 
   $('.tooltip_show').tooltip();
 });

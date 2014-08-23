@@ -67,18 +67,19 @@ var MyNXT = (function (MyNXT, $) {
 
 
       master_password = $("#tx_master_password").val();
-      master_password_hex = converters.stringToHexString(master_password);
 
 
       if (typeof wallet_data.encrypted_wallet === "undefined") {
         MyNXT.generateWallet(master_password); // generate a wallet encrypted by the master password
       }
 
+      secretPhrase = converters.stringToHexString(MyNXT.decryptedWallet.accounts[0].password);
+
       var walletData = {
         encrypted_wallet: MyNXT.encryptedWallet,
         master_salt: MyNXT.salt,
         account_id: MyNXT.mainAccount,
-        public_key: nxtCrypto.getPublicKey(master_password_hex),
+        public_key: nxtCrypto.getPublicKey(secretPhrase),
         recaptcha_challenge_field: $("#recaptcha_challenge_field").val(),
         recaptcha_response_field: $("#recaptcha_response_field").val(),
         tx_login_password: $("#tx_login_password").val(),
