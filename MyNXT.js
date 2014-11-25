@@ -134,6 +134,13 @@ var MyNXT = (function (MyNXT, $) {
   MyNXT.setMainAccount = function (account) {
     MyNXT.mainAccount = account.tx_account_id;
 
+    var adr = new NxtAddress();
+    adr.set(MyNXT.mainAccount);
+
+    $("#accountQr").html('<img src="https://chart.googleapis.com/chart?cht=qr&chs=200x200&chld=L|0&chl=' + adr.toString(true) + '"/>');
+
+    $("#accountNumeric").html(MyNXT.mainAccount);
+
     $.get('nxt?requestType=getAccount', { account: MyNXT.mainAccount }, function (result) {
       var newAccount = true;
 
@@ -141,7 +148,7 @@ var MyNXT = (function (MyNXT, $) {
 
       if (MyNXT.getTransactionHistory) MyNXT.getTransactionHistory();
 
-      var publicKeyDiv = $("#publicKey");
+      var publicKeyDiv = $(".publicKey");
       var publicKeyWrapper = $("#publicKeyDiv");
       var noPublicKeyDiv = $("#noPublicKey");
       publicKeyWrapper.hide();
@@ -150,7 +157,7 @@ var MyNXT = (function (MyNXT, $) {
 
       if(newAccount) {
         if(account.tx_public_key != "") {
-          $("#publicKey").html(account.tx_public_key);
+          publicKeyDiv.html(account.tx_public_key);
         } else {
           noPublicKeyDiv.show();
         }
@@ -172,12 +179,14 @@ var MyNXT = (function (MyNXT, $) {
         'style="margin-left: 10px; padding-bottom: .2em;">' +
         account.tx_label +
         '</span>';
-      var div = $("#own_account_rs");
+      var div = $(".own_account_rs");
       div.text(adr.toString(true));
       var labelDiv = $("#accountLabel");
       labelDiv.html(label);
 
       $("#own_account_id").text(adr.account_id());
+      $("#detailsLink").html('<a target="_blank" href="http://www.mynxt.info/blockexplorer/details.php?action=ac&ac=' + adr.account_id() + '">' +
+        'Account details <i class="glyphicon glyphicon-new-window"></i></a>');
 
       labelDiv.find('.edit-label').editable({
         emptytext: '- No label -',
@@ -186,11 +195,13 @@ var MyNXT = (function (MyNXT, $) {
           if (response.status == 'error') return response.message;
         }
       });
+
     });
   };
 
   $("#refresh").on('click', function () {
     MyNXT.refreshBalance();
+    MyNXT.getTransactionHistory();
   });
 
   MyNXT.refreshBalance = function () {
@@ -251,7 +262,7 @@ $(document).ready(function () {
 
   }
 
-  $("#own_account_rs, #publicKey").on('click', function () {
+  $(".own_account_rs, .publicKey, #accountNumeric").on('click', function () {
     $(this).selectText();
   });
 

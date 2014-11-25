@@ -1,7 +1,7 @@
 var MyNXT = (function (MyNXT, $) {
   var requestRunning = false;
 
-  $("#login").click(function () {
+  $("#login").on('click', function () {
     MyNXT.login();
   });
 
@@ -21,9 +21,10 @@ var MyNXT = (function (MyNXT, $) {
     }
     requestRunning = true;
 
-    var frmLogin = "#frmLogin";
+    var loginButton = Ladda.create(document.querySelector('#login'));
+    loginButton.start();
 
-    MyNXT.showSmallLoadingBar(frmLogin);
+    var frmLogin = "#frmLogin";
 
     var data = {
       tx_email: $("#tx_email").val(),
@@ -33,16 +34,18 @@ var MyNXT = (function (MyNXT, $) {
 
     $.post('api/login.php', data, function (result) {
       requestRunning = false;
+      loginButton.stop();
 
       var errorMessage = $('.errormessage').hide();
-
-      MyNXT.hideLoadingBar(frmLogin);
 
       if (result.gauth) {
         return $('#googleAuthenticatorModal').modal({backdrop: 'static'})
       }
       if (result.logged_in === true) {
-        MyNXT.logInNewApi();
+        loginButton.start();
+        MyNXT.logInNewApi(function() {
+          location.reload();
+        });
       }
 
       if (result.error) {
@@ -76,7 +79,9 @@ var MyNXT = (function (MyNXT, $) {
       requestRunning = false;
 
       if (result.logged_in === true) {
-        MyNXT.logInNewApi();
+        MyNXT.logInNewApi(function () {
+          location.reload();
+        });
       } else {
         modal.find(".loading").html('<span style="color:red">Authentication code invalid</span>');
       }
@@ -84,7 +89,7 @@ var MyNXT = (function (MyNXT, $) {
   };
 
   // temporary function to also validate the new API
-  MyNXT.logInNewApi = function () {
+  MyNXT.logInNewApi = function (callback) {
     var data = {
       email: $("#tx_email").val(),
       password: $("#tx_login_password").val()
@@ -93,7 +98,7 @@ var MyNXT = (function (MyNXT, $) {
     $.post('api/0.1/auth', data, function (result) {
       console.log(result);
       if (result.status == "success") {
-        location.reload();
+        callback();
       }
     });
   };

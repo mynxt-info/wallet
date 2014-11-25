@@ -95,7 +95,6 @@ var MyNXT = (function (MyNXT, $) {
 
     wallet = JSON.stringify(wallet);
 
-
     var key = asmCrypto.PBKDF2_HMAC_SHA256.hex(masterPassword, MyNXT.salt, 1499, 32);
     key = MyNXT.pack("H*", key);
 
@@ -154,6 +153,84 @@ var MyNXT = (function (MyNXT, $) {
     data.sigBytes = i + 1;
 
     return CryptoJS.enc.Utf8.stringify(data);
+  };
+
+  MyNXT.encryptMessage = function (plaintext, options) {
+    if (!window.crypto && !window.msCrypto) {
+      throw "This browser doesn't have encryption support.";
+    }
+
+    if (!options.sharedKey) {
+      options.sharedKey = MyNXT.getSharedKey(options.privateKey, options.publicKey);
+    }
+
+    var compressedPlaintext = pako.gzip(new Uint8Array(plaintext));
+
+    options.nonce = new Uint8Array(32);
+
+    if (window.crypto) {
+      window.crypto.getRandomValues(options.nonce);
+    } else {
+      window.msCrypto.getRandomValues(options.nonce);
+    }
+
+    var data = MyNXT.aesEncrypt(compressedPlaintext, options);
+
+    return {
+      "nonce": converters.byteArrayToHexString(options.nonce),
+      "message": converters.byteArrayToHexString(data)
+    };
+  };
+
+  MyNXT.aesEncrypt = function (plaintext, options) {
+    if (!window.crypto && !window.msCrypto) {
+      throw "This browser doesn't have encryption support.";
+    }
+
+    var text = converters.byteArrayToWordArray(plaintext);
+
+    if (!options.sharedKey) {
+      var sharedKey = MyNXT.getSharedKey(options.privateKey, options.publicKey);
+    } else {
+      var sharedKey = options.sharedKey.slice(0); //clone
+    }
+
+    console.log(sharedKey);
+
+    for (var i = 0; i < 32; i++) {
+      sharedKey[i] ^= options.nonce[i];
+    }
+
+    var key = CryptoJS.SHA256(converters.byteArrayToWordArray(sharedKey));
+
+    var tmp = new Uint8Array(16);
+
+    if (window.crypto) {
+      window.crypto.getRandomValues(tmp);
+    } else {
+      window.msCrypto.getRandomValues(tmp);
+    }
+
+    var iv = converters.byteArrayToWordArray(tmp);
+    var encrypted = CryptoJS.AES.encrypt(text, key, {
+      iv: iv
+    });
+
+    var ivOut = converters.wordArrayToByteArray(encrypted.iv);
+
+    var ciphertextOut = converters.wordArrayToByteArray(encrypted.ciphertext);
+
+    return ivOut.concat(ciphertextOut);
+  };
+
+  MyNXT.getPrivateKey = function (secretPhrase) {
+    SHA256_init();
+    SHA256_write(converters.stringToByteArray(secretPhrase));
+    return converters.shortArrayToHexString(curve25519_clamp(converters.byteArrayToShortArray(SHA256_finalize())));
+  };
+
+  MyNXT.getSharedKey = function(key1, key2) {
+    return converters.shortArrayToByteArray(curve25519_(converters.byteArrayToShortArray(key1), converters.byteArrayToShortArray(key2), null));
   };
 
   return MyNXT;

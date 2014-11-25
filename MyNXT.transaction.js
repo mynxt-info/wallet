@@ -12,6 +12,8 @@ var MyNXT = (function (MyNXT, $) {
     modal.html(modalHtml);
   });
 
+  var advanced = false;
+
   var recipient;
   var recipientPublicKey;
   var amount;
@@ -51,7 +53,8 @@ var MyNXT = (function (MyNXT, $) {
       }
 
       requestRunning = true;
-      MyNXT.showBigLoadingBar(modal);
+      var sendButton = Ladda.create(document.querySelector('#sndModal').querySelector('.send-nxt'));
+      sendButton.start();
 
       var data = {
         "account": adr.account_id()
@@ -59,6 +62,7 @@ var MyNXT = (function (MyNXT, $) {
 
       $.get('nxt?requestType=getAccount', data, function (data) {
         requestRunning = false;
+        sendButton.stop();
 
         if (typeof data.errorCode === "undefined" || data.errorCode == 5) {
           var balance = 0;
@@ -70,12 +74,15 @@ var MyNXT = (function (MyNXT, $) {
           var password_div = '<form role="form" action="#" class="form-horizontal"><div class="form-group"><label for="tx_master_password" class="col-sm-4 control-label">Master Password</label><div class="col-sm-7"><input type="password" class="form-control master-password" id="tx_master_password" name="tx_master_password" placeholder="Enter your master password" autocomplete="off"><p class="help-block"><small>This operation requires you to enter your master password so we can decrypt your wallet in your browser. Your master password is never sent to our servers!</small></p></div></div>';
 
           var displayDiv = 'block';
-          if(data.publicKey) displayDiv = 'none';
+          if(data.publicKey) {
+            displayDiv = 'none';
+            recipientPublicKey = data.publicKey;
+          }
 
-          password_div += '<div style="display: ' + displayDiv +'"><div class="form-group"><label for="publicKey" class="col-sm-4 control-label">Public Key</label><div class="col-sm-7"><input type="text" class="form-control" id="publicKey" name="publicKey" placeholder="Enter public key" autocomplete="off"><p class="help-block">Since the destination account is brand new, you need to provide its public key. Please ask the owner of the destination account to provide his public key number so you can complete this transaction</p></div></div>';
+          password_div += '<div style="display: ' + displayDiv +'"><div class="form-group"><label for="publicKey" class="col-sm-4 control-label">Recipient public key</label><div class="col-sm-7"><input type="text" class="form-control" id="publicKey" name="publicKey" placeholder="Enter public key" autocomplete="off"><p class="help-block">Since the destination account is brand new, you need to provide its public key. Please ask the owner of the destination account to provide his public key number so you can complete this transaction</p></div></div>';
           password_div += '</form>';
 
-          var message_html = "<div class='message alert alert-success'>The destination account <strong>" + recipient + "</strong> has a balance of <strong>" + balance + " NXT</strong>." +
+          var message_html = "<div class='message alert alert-success'>The destination account <strong>" + recipient + "</strong> has a balance of <strong>" + balance.formatMoney(2) + " NXT</strong>." +
             " Please confirm that you want to send <strong>" + amount + " NXT." + "</strong>" +
             "<br/>" +
             "The account used for sending is <strong><span class='nxt-address'>" + MyNXT.mainAccount + "</span></strong></div>";
@@ -84,7 +91,7 @@ var MyNXT = (function (MyNXT, $) {
           var footer_message_html = '<div class="col-xs-8 loading error"></div>' +
             '<div class="col-xs-4" id="footer_message_button">' +
             '<button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>' +
-            '<button type="button" class="btn btn-primary send-nxt" rel="' + message_html + '">Yes!</button>' +
+            '<button class="btn btn-primary send-nxt ladda-button" data-style="zoom-out"  rel="' + message_html + '"><span class="ladda-label">Yes!</span></button>' +
             '</div>';
 
           $("#body_main").hide();
@@ -102,14 +109,13 @@ var MyNXT = (function (MyNXT, $) {
     if (sendNxtStep === 2) {
       if (requestRunning) return;
       requestRunning = true;
-      MyNXT.showBigLoadingBar(modal);
-
+      var sendButton = Ladda.create(document.querySelector('#footer_message').querySelector('.send-nxt'));
+      sendButton.start();
 
       MyNXT.getEncryptedWallet(function () {
         requestRunning = false;
 
         var masterPassword = modal.find('.master-password').val();
-        var recipientPublicKey = modal.find('#publicKey').val();
 
         // old wallet, need to convert
         if (MyNXT.walletVersion == 1) {
@@ -121,6 +127,7 @@ var MyNXT = (function (MyNXT, $) {
 
             MyNXT.walletVersion = 2;
           } else {
+            sendButton.stop();
             return MyNXT.showError(modal, "Wrong master password");
           }
         }
@@ -130,11 +137,9 @@ var MyNXT = (function (MyNXT, $) {
 
           try {
             MyNXT.decryptWallet(masterPassword);
-
             MyNXT.getMainAccountSecretPhrase();
 
             var secretPhrase = MyNXT.mainSecretPhrase;
-
             secretPhrase = converters.stringToHexString(secretPhrase);
 
             var publicKey = nxtCrypto.getPublicKey(secretPhrase);
@@ -149,9 +154,35 @@ var MyNXT = (function (MyNXT, $) {
 
             if(recipientPublicKey) {
               data.recipientPublicKey = recipientPublicKey;
+            } else {
+              data.recipientPublicKey = modal.find('#publicKey').val();
             }
 
-            console.log(data);
+            if(advanced) {
+              var message = $("#message").val();
+
+              if($("#encrypted").prop('checked')) {
+                try {
+                  var options = {
+                    privateKey: converters.hexStringToByteArray(MyNXT.getPrivateKey(MyNXT.mainSecretPhrase)),
+                    publicKey: converters.hexStringToByteArray(data.recipientPublicKey)
+                  };
+
+                  var encrypted = MyNXT.encryptMessage(converters.stringToByteArray(message), options);
+                  data.encryptedMessageData = encrypted.message;
+                  data.encryptedMessageNonce = encrypted.nonce;
+                  data.messageToEncryptIsText = "true";
+
+                } catch(e) {
+                  requestRunning = false;
+                  sendButton.stop();
+                  return MyNXT.showError(modal, "Couldn't encrypt");
+                }
+              } else {
+                data.message = message;
+                data.messageIsText = true;
+              }
+            }
 
             $.get('nxt?requestType=sendMoney', data, function (result) {
               console.log(result);
@@ -174,8 +205,7 @@ var MyNXT = (function (MyNXT, $) {
 
                 $.get('nxt?requestType=broadcastTransaction', data, function (result) {
                   requestRunning = false;
-
-                  console.log(result);
+                  sendButton.stop();
 
                   if (typeof result.errorCode !== "undefined") {
                     MyNXT.showError(modal, result.errorDescription);
@@ -187,15 +217,16 @@ var MyNXT = (function (MyNXT, $) {
                     var message_html = '<p>Something went wrong on our side. Please try again later.</p>'
                   }
 
-                  MyNXT.hideLoadingBar(modal);
 
                   $('#body_message').html(message_html).show();
                   $('#footer_message_button').html('<button type="button" class="btn btn-primary" data-dismiss="modal" id="ok">OK</button>');
                   $('#footer_message').show();
                   MyNXT.refreshBalance();
+                  MyNXT.getTransactionHistory();
                 });
 
               } else {
+                sendButton.stop();
                 if(result.errorDescription) {
                   MyNXT.showError(modal, result.errorDescription);
                 } else {
@@ -204,6 +235,7 @@ var MyNXT = (function (MyNXT, $) {
               }
             });
           } catch (e) {
+            sendButton.stop();
             MyNXT.showError(modal, "Wrong master password");
           }
         }
@@ -215,6 +247,30 @@ var MyNXT = (function (MyNXT, $) {
     $("#tx_to").val($(this).data('address'));
 
     $("#send-error").hide();
+  });
+
+  modal.on('click', '#enableAdvanced', function () {
+    $("#advanced").toggle();
+
+    var fee = $("#nm_fee");
+
+    if(!advanced) {
+      fee.removeAttr('disabled');
+      $("#enableAdvanced").text('Basic');
+      advanced = true;
+    } else {
+      fee.attr('disabled', 'disabled');
+      $("#enableAdvanced").text('Advanced');
+      advanced = false;
+    }
+  });
+
+  modal.on('keydown, keyup', '#message', function () {
+    var $this = $(this);
+    var text = $this.val();
+    var bytes = MyNXT.calculateBytesInString(text);
+
+    $("#charactersLeft").text(1000-bytes);
   });
 
   return MyNXT;

@@ -27,30 +27,28 @@ var MyNXT = (function (MyNXT, $) {
 
       sjcl.random = new sjcl.prng(8);
 
-      if (window.crypto) {
-        try {
-          var ab = new Uint32Array(32);
-          window.crypto.getRandomValues(ab);
-          sjcl.random.addEntropy(ab, 1024, 'crypto.getRandomValues');
+      try {
+        var ab = new Uint32Array(32);
+        window.crypto.getRandomValues(ab);
+        sjcl.random.addEntropy(ab, 1024, 'crypto.getRandomValues');
 
-          addAccountOption = 1;
-          return confirmButton.removeClass('disabled');
-        } catch (e) {
-          modal.find('#keyGeneration').show();
+        addAccountOption = 1;
+        return confirmButton.removeClass('disabled');
+      } catch (e) {
+        modal.find('#keyGeneration').show();
 
-          sjcl.random.startCollectors();
-          sjcl.random.addEventListener('progress', function () {
-            var progress = (sjcl.random.getProgress(8) * 100);
+        sjcl.random.startCollectors();
+        sjcl.random.addEventListener('progress', function () {
+          var progress = (sjcl.random.getProgress(8) * 100);
 
-            progressBar.css('width', progress + '%').attr('aria-valuenow', progress).html(progress.toFixed(0) + "%");
-          });
+          progressBar.css('width', progress + '%').attr('aria-valuenow', progress).html(progress.toFixed(0) + "%");
+        });
 
-          sjcl.random.addEventListener('seeded', function () {
-            sjcl.random.stopCollectors();
+        sjcl.random.addEventListener('seeded', function () {
+          sjcl.random.stopCollectors();
 
-            confirmButton.removeClass('disabled');
-          });
-        }
+          confirmButton.removeClass('disabled');
+        });
       }
     }
 
@@ -70,10 +68,12 @@ var MyNXT = (function (MyNXT, $) {
   modal.on('click', '.add-account', function () {
     if (requestRunning) return;
     requestRunning = true;
-    MyNXT.showBigLoadingBar(modal);
+    var addAccButton = Ladda.create(document.querySelector('#addAccountModal').querySelector('.add-account'));
+    addAccButton.start();
 
     MyNXT.getEncryptedWallet(function () {
       requestRunning = false;
+      addAccButton.stop();
 
       if (addAccountOption === 1) {
         var masterPassword = modal.find('#generateSecretPhrase .master-password').val();
@@ -100,17 +100,21 @@ var MyNXT = (function (MyNXT, $) {
 
       if (!MyNXT.decryptWallet(masterPassword)) return MyNXT.showError(modal, "Wrong master password");
 
+      MyNXT.hideError(modal);
+      addAccButton.start();
+
       function storeAccount (result) {
+        addAccButton.stop();
+
         if (result.status == "success") {
           var addedAccountId = result.data.tx_account_id;
 
           MyNXT.encryptWallet(masterPassword);
 
           MyNXT.storeWallet(function (result) {
+            addAccButton.stop();
 
             if (result.status == "success") {
-              MyNXT.hideLoadingBar(modal);
-
               var adr = new NxtAddress();
               adr.set(addedAccountId);
 

@@ -1,3 +1,79 @@
+(function() {
+  try {
+    var a = new Uint8Array(1);
+    return; //no need
+  } catch(e) { }
+
+  function subarray(start, end) {
+    return this.slice(start, end);
+  }
+
+  function set_(array, offset) {
+    if (arguments.length < 2) offset = 0;
+    for (var i = 0, n = array.length; i < n; ++i, ++offset)
+      this[offset] = array[i] & 0xFF;
+  }
+
+// we need typed arrays
+  function TypedArray(arg1) {
+    var result;
+    if (typeof arg1 === "number") {
+      result = new Array(arg1);
+      for (var i = 0; i < arg1; ++i)
+        result[i] = 0;
+    } else
+      result = arg1.slice(0);
+    result.subarray = subarray;
+    result.buffer = result;
+    result.byteLength = result.length;
+    result.set = set_;
+    if (typeof arg1 === "object" && arg1.buffer)
+      result.buffer = arg1.buffer;
+
+    return result;
+  }
+
+  window.Uint8Array = TypedArray;
+  window.Uint32Array = TypedArray;
+  window.Int32Array = TypedArray;
+})();
+
+
+(function() {
+  if ("response" in XMLHttpRequest.prototype ||
+    "mozResponseArrayBuffer" in XMLHttpRequest.prototype ||
+    "mozResponse" in XMLHttpRequest.prototype ||
+    "responseArrayBuffer" in XMLHttpRequest.prototype)
+    return;
+  Object.defineProperty(XMLHttpRequest.prototype, "response", {
+    get: function() {
+      return new Uint8Array( new VBArray(this.responseBody).toArray() );
+    }
+  });
+})();
+
+(function() {
+  if ("btoa" in window)
+    return;
+
+  var digits = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+
+  window.btoa = function(chars) {
+    var buffer = "";
+    var i, n;
+    for (i = 0, n = chars.length; i < n; i += 3) {
+      var b1 = chars.charCodeAt(i) & 0xFF;
+      var b2 = chars.charCodeAt(i + 1) & 0xFF;
+      var b3 = chars.charCodeAt(i + 2) & 0xFF;
+      var d1 = b1 >> 2, d2 = ((b1 & 3) << 4) | (b2 >> 4);
+      var d3 = i + 1 < n ? ((b2 & 0xF) << 2) | (b3 >> 6) : 64;
+      var d4 = i + 2 < n ? (b3 & 0x3F) : 64;
+      buffer += digits.charAt(d1) + digits.charAt(d2) + digits.charAt(d3) +      digits.charAt(d4);
+    }
+    return buffer;
+  };
+})();
+
 var MyNXT = (function (MyNXT, $, undefined) {
 
   MyNXT.pack = function (format) {
@@ -344,7 +420,7 @@ var MyNXT = (function (MyNXT, $, undefined) {
     }
 
     return result;
-  }
+  };
 
   MyNXT.strtr = function (str, from, to) {
     //  discuss at: http://phpjs.org/functions/strtr/
@@ -469,6 +545,39 @@ var MyNXT = (function (MyNXT, $, undefined) {
       return interval + " minutes";
     }
     return Math.floor(seconds) + " seconds";
+  };
+
+  MyNXT.calculateBytesInString = function (str) {
+    var s = str.length;
+    for (var i=str.length-1; i>=0; i--) {
+      var code = str.charCodeAt(i);
+      if (code > 0x7f && code <= 0x7ff) s++;
+      else if (code > 0x7ff && code <= 0xffff) s+=2;
+      if (code >= 0xDC00 && code <= 0xDFFF) i--; //trail surrogate
+    }
+    return s;
+  };
+
+  Number.prototype.formatMoney = function(c){
+    c = Number(c);
+    var n = this,
+        d = ".",
+        t = ",",
+        s = n < 0 ? "-" : "",
+        i = parseInt(n = Math.abs(+n || 0).toFixed(c)) + "",
+        j = (j = i.length) > 3 ? j % 3 : 0;
+    return s + (j ? i.substr(0, j) + t : "") + i.substr(j).replace(/(\d{3})(?=\d)/g, "$1" + t) + (c ? d + Math.abs(n - i).toFixed(c).slice(2) : "");
+  };
+
+  MyNXT.getCookie = function (cname) {
+    var name = cname + "=";
+    var ca = document.cookie.split(';');
+    for(var i=0; i<ca.length; i++) {
+      var c = ca[i];
+      while (c.charAt(0)==' ') c = c.substring(1);
+      if (c.indexOf(name) != -1) return c.substring(name.length,c.length);
+    }
+    return "";
   };
 
   return MyNXT;
